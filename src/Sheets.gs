@@ -80,5 +80,15 @@ function updateSheetWithTransactions(dataList) {
   });
 
   SpreadsheetApp.flush();
+
+  // 4. Sort sheet by Date (Column A) ascending
+  const newLastRow = sheet.getLastRow();
+  if (newLastRow > 1) {
+    sheet
+      .getRange(2, 1, newLastRow - 1, 8)
+      .sort({ column: 1, ascending: true });
+    console.log("Sheet sorted chronologically.");
+  }
+
   setupCategoryValidation();
 }
