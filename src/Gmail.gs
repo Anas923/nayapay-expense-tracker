@@ -1,5 +1,5 @@
 /**
- * Fetches Nayapay transaction emails.
+ * Fetches Nayapay transaction emails with a safety buffer.
  * @param {boolean} forceHistory If true, fetches all emails since the start of the current year.
  */
 function fetchNayapayEmails(forceHistory = false) {
@@ -10,8 +10,10 @@ function fetchNayapayEmails(forceHistory = false) {
   let query = "from:service@nayapay.com";
 
   if (lastSync && !forceHistory) {
-    // Optimization: Only fetch since last sync (Gmail search 'after' uses seconds)
-    query += ` after:${Math.floor(lastSync / 1000)}`;
+    // Optimization with Safety: Subtract 10 minutes (600 seconds)
+    // to handle overlapping messages or Gmail indexing delays.
+    const bufferedTime = Math.floor(lastSync / 1000) - 600;
+    query += ` after:${bufferedTime}`;
   } else {
     // First run or empty sheet: fetch for the entire current year
     const year = new Date().getFullYear();
@@ -22,7 +24,7 @@ function fetchNayapayEmails(forceHistory = false) {
   }
 
   console.log(`Searching Gmail with query: ${query}`);
-  const threads = GmailApp.search(query, 0, 100); // 100 threads is plenty for a yearly history
+  const threads = GmailApp.search(query, 0, 100);
   const messages = [];
 
   threads.forEach((thread) => {
@@ -30,4 +32,12 @@ function fetchNayapayEmails(forceHistory = false) {
   });
 
   return messages;
+}
+
+/**
+ * Resets the sync timestamp to force a full re-scan on next run.
+ */
+function resetSyncTime() {
+  PropertiesService.getScriptProperties().deleteProperty("LAST_SYNC_TIME");
+  console.log("Sync time reset successful.");
 }

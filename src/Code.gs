@@ -10,7 +10,7 @@ function syncNayapayTransactions() {
   // 2. Detect if we need a full history sync (is the transaction sheet empty?)
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const mainSheet = ss.getSheets()[0];
-  const isSheetEmpty = mainSheet.getLastRow() <= 1; // 0 or 1 (headers only)
+  const isSheetEmpty = mainSheet.getLastRow() <= 1;
 
   // 3. Fetch and parse emails
   const messages = fetchNayapayEmails(isSheetEmpty);
@@ -30,7 +30,6 @@ function syncNayapayTransactions() {
   });
 
   if (parsedData.length > 0) {
-    // Sort by date ascending to append in order
     parsedData.sort((a, b) => a.date - b.date);
     updateSheetWithTransactions(parsedData);
     console.log(`Successfully synced ${parsedData.length} transactions.`);
@@ -43,6 +42,42 @@ function syncNayapayTransactions() {
     "LAST_SYNC_TIME",
     new Date().getTime().toString(),
   );
+}
+
+/**
+ * Triggers a full redo of the sync for the current year.
+ * Useful if a transaction was missed or deleted.
+ */
+function forceRecalibrate() {
+  const ui = SpreadsheetApp.getUi();
+  const response = ui.alert(
+    "Recalibrate Sync",
+    "This will re-scan all Nayapay emails from Jan 1st of this year. Existing transactions will not be duplicated. Proceed?",
+    ui.ButtonSet.YES_NO,
+  );
+
+  if (response === ui.Button.YES) {
+    resetSyncTime();
+    syncNayapayTransactions();
+    ui.alert(
+      "Recalibration Complete",
+      "The sheet has been fully re-synced.",
+      ui.ButtonSet.OK,
+    );
+  }
+}
+
+/**
+ * Creates a custom menu in the Google Sheet.
+ */
+function onOpen() {
+  const ui = SpreadsheetApp.getUi();
+  ui.createMenu("NayaPay")
+    .addItem("Sync Now", "syncNayapayTransactions")
+    .addItem("Recalibrate (Full Year)", "forceRecalibrate")
+    .addSeparator()
+    .addItem("Setup Automation", "createTrigger")
+    .addToUi();
 }
 
 /**
