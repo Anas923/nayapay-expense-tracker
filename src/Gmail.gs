@@ -1,21 +1,27 @@
 /**
  * Fetches Nayapay transaction emails with a safety buffer.
  * @param {boolean} forceHistory If true, fetches all emails since the start of the current year.
+ * @param {string} specificAfterDate Optional date (YYYY/MM/DD) to fetch after.
  */
-function fetchNayapayEmails(forceHistory = false) {
+function fetchNayapayEmails(forceHistory = false, specificAfterDate = null) {
   const props = PropertiesService.getScriptProperties();
   const lastSync = props.getProperty("LAST_SYNC_TIME");
 
   // Base query
   let query = "from:service@nayapay.com";
 
-  if (lastSync && !forceHistory) {
-    // Optimization with Safety: Subtract 10 minutes (600 seconds)
-    // to handle overlapping messages or Gmail indexing delays.
+  if (specificAfterDate) {
+    // Priority 1: User specified a date
+    query += ` after:${specificAfterDate}`;
+    console.log(
+      `Manual recalibration requested. Searching since ${specificAfterDate}.`,
+    );
+  } else if (lastSync && !forceHistory) {
+    // Priority 2: Optimize with Safety buffer (normal sync)
     const bufferedTime = Math.floor(lastSync / 1000) - 600;
     query += ` after:${bufferedTime}`;
   } else {
-    // First run or empty sheet: fetch for the entire current year
+    // Priority 3: Full year history (first run or forced full scan)
     const year = new Date().getFullYear();
     query += ` after:${year}/01/01`;
     console.log(
